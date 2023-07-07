@@ -550,6 +550,8 @@ layer {
     
     
     def conv_bn_relu(self, name, num, kernel, stride):
+      if self.size < 0.5:
+          num = num // 2
       self.conv(name, num, kernel, stride)
       self.bn(name)
       self.relu(name)
@@ -700,7 +702,7 @@ layer {
       self.label_map = FLAGS.label_map
       self.stage = stage
       if gen_ssd:
-          self.input_size = 300
+          self.input_size = 320
       else:
           self.input_size = 224
       self.size = size
@@ -771,7 +773,7 @@ def create_ssd_anchors(num_layers=6,
   box_specs_list = []
   scales = [min_scale + (max_scale - min_scale) * i / (num_layers - 1)
             for i in range(num_layers)] + [1.0]
-  return zip(scales[:-1], scales[1:])
+  return list(zip(scales[:-1], scales[1:]))
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
