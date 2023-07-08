@@ -564,18 +564,21 @@ layer {
         self.bn(name)
         self.relu(name)
 
+    def conv_pw(self, name, outp):
+        outp = int(outp * self.size)
+        name = name + "/pw"
+        self.conv(name, outp, 1)
+        if not FLAGS.linear_pw:
+            self.bn(name)
+            self.relu(name)
+
     def conv_dw_pw(self, name, inp, outp, stride):
         inp = int(inp * self.size)
-        outp = int(outp * self.size)
         name1 = name + "/dw"
         self.conv(name1, inp, 3, stride, inp)
         self.bn(name1)
         self.relu(name1)
-        name2 = name + "/pw"
-        self.conv(name2, outp, 1)
-        self.bn(name2)
-        if not FLAGS.linear_pw:
-            self.relu(name2)
+        self.conv_pw(name, outp)
 
     def ave_pool(self, name):
         print(
@@ -728,8 +731,12 @@ layer {
             self.data_test_ssd()
         else:
             self.data_deploy()
+
         self.conv_bn_relu_with_factor("conv0", 32, 3, 2)
-        self.conv_dw_pw("conv1", 32, 64, 1)
+        if FLAGS.gray:
+            self.conv_pw("conv1", 64)
+        else:
+            self.conv_dw_pw("conv1", 32, 64, 1)
         self.conv_dw_pw("conv2", 64, 128, 2)
         self.conv_dw_pw("conv3", 128, 128, 1)
         self.conv_dw_pw("conv4", 128, 256, 2)
@@ -816,28 +823,30 @@ if __name__ == '__main__':
         help='The size of mobilenet channels, support 1.0, 0.75, 0.5, 0.25.'
     )
     parser.add_argument(
-        '-c', '--class-num',
-        type=int,
-        required=True,
-        help='Output class number, include the \'background\' class. e.g. 21 for voc.'
-    )
-    parser.add_argument(
         '--linear_pw',
-        type=bool,
-        default=False,
+        action='store_true',
         help='Linear point-wise convolution layers, i.e. not followed by BatchNorm nor ReLU.'
     )
     parser.add_argument(
         '--truncated',
-        type=bool,
-        default=False,
+        action='store_true',
         help='Omit layers with the coarsest spatial granularities.'
     )
     parser.add_argument(
         '--shallow',
-        type=bool,
-        default=False,
+        action='store_true',
         help='Omit 5x repeated MobileNet layers.'
+    )
+    parser.add_argument(
+        '--gray',
+        action='store_true',
+        help='Adjust first layers to assume mono-channel input.'
+    )
+    parser.add_argument(
+        '-c', '--class-num',
+        type=int,
+        required=True,
+        help='Output class number, include the \'background\' class. e.g. 21 for voc.'
     )
 
     FLAGS, unparsed = parser.parse_known_args()
