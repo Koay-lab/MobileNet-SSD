@@ -573,8 +573,8 @@ layer {
         self.relu(name1)
         name2 = name + "/pw"
         self.conv(name2, outp, 1)
+        self.bn(name2)
         if not FLAGS.linear_pw:
-            self.bn(name2)
             self.relu(name2)
 
     def ave_pool(self, name):
@@ -735,10 +735,11 @@ layer {
         self.conv_dw_pw("conv4", 128, 256, 2)
         self.conv_dw_pw("conv5", 256, 256, 1)
         self.conv_dw_pw("conv6", 256, 512, 2)
-        self.conv_dw_pw("conv7", 512, 512, 1)
-        self.conv_dw_pw("conv8", 512, 512, 1)
-        self.conv_dw_pw("conv9", 512, 512, 1)
-        self.conv_dw_pw("conv10", 512, 512, 1)
+        if not FLAGS.shallow:
+            self.conv_dw_pw("conv7", 512, 512, 1)
+            self.conv_dw_pw("conv8", 512, 512, 1)
+            self.conv_dw_pw("conv9", 512, 512, 1)
+            self.conv_dw_pw("conv10", 512, 512, 1)
         self.conv_dw_pw("conv11", 512, 512, 1)
         self.conv_dw_pw("conv12", 512, 1024, 2)
         self.conv_dw_pw("conv13", 1024, 1024, 1)
@@ -818,19 +819,25 @@ if __name__ == '__main__':
         '-c', '--class-num',
         type=int,
         required=True,
-        help='Output class number, include the \'backgroud\' class. e.g. 21 for voc.'
+        help='Output class number, include the \'background\' class. e.g. 21 for voc.'
     )
     parser.add_argument(
         '--linear_pw',
         type=bool,
         default=False,
-        help='Linerar point-wise convolution layers, i.e. not followed by BatchNorm nor ReLU.'
+        help='Linear point-wise convolution layers, i.e. not followed by BatchNorm nor ReLU.'
     )
     parser.add_argument(
         '--truncated',
         type=bool,
         default=False,
         help='Omit layers with the coarsest spatial granularities.'
+    )
+    parser.add_argument(
+        '--shallow',
+        type=bool,
+        default=False,
+        help='Omit 5x repeated MobileNet layers.'
     )
 
     FLAGS, unparsed = parser.parse_known_args()
