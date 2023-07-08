@@ -552,20 +552,20 @@ layer {
         self.last = name
 
     def conv_bn_relu(self, name, num, kernel, stride):
-        if self.size < 0.5:
+        if self.depth_multiplier < 0.5:
             num = num // 2
         self.conv(name, num, kernel, stride)
         self.bn(name)
         self.relu(name)
 
     def conv_bn_relu_with_factor(self, name, num, kernel, stride):
-        num = int(num * self.size)
+        num = int(num * self.depth_multiplier)
         self.conv(name, num, kernel, stride)
         self.bn(name)
         self.relu(name)
 
     def conv_pw(self, name, outp):
-        outp = int(outp * self.size)
+        outp = int(outp * self.depth_multiplier)
         name = name + "/pw"
         self.conv(name, outp, 1)
         if not FLAGS.linear_pw:
@@ -573,7 +573,7 @@ layer {
             self.relu(name)
 
     def conv_dw_pw(self, name, inp, outp, stride):
-        inp = int(inp * self.size)
+        inp = int(inp * self.depth_multiplier)
         name1 = name + "/dw"
         self.conv(name1, inp, 3, stride, inp)
         self.bn(name1)
@@ -703,7 +703,7 @@ layer {
 }""" % (name, self.last, name, output))
         self.last = name
 
-    def generate(self, stage, gen_ssd, size, class_num):
+    def generate(self, stage, gen_ssd, depth_multiplier, class_num):
         self.class_num = class_num
         self.lmdb = FLAGS.lmdb
         self.label_map = FLAGS.label_map
@@ -712,7 +712,7 @@ layer {
             self.input_size = 320
         else:
             self.input_size = 224
-        self.size = size
+        self.depth_multiplier = depth_multiplier
         self.class_num = class_num
 
         if gen_ssd:
@@ -817,10 +817,10 @@ if __name__ == '__main__':
         help='Default generate ssd, if this is set, generate classifier prototxt.'
     )
     parser.add_argument(
-        '--size',
+        '--depth_multiplier',
         type=float,
         default=1.0,
-        help='The size of mobilenet channels, support 1.0, 0.75, 0.5, 0.25.'
+        help='Depth multiplier for mobilenet blocks, support 1.0, 0.75, 0.5, 0.25.'
     )
     parser.add_argument(
         '--linear_pw',
@@ -851,4 +851,4 @@ if __name__ == '__main__':
 
     FLAGS, unparsed = parser.parse_known_args()
     gen = Generator()
-    gen.generate(FLAGS.stage, not FLAGS.classifier, FLAGS.size, FLAGS.class_num)
+    gen.generate(FLAGS.stage, not FLAGS.classifier, FLAGS.depth_multiplier, FLAGS.class_num)
