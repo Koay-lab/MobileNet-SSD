@@ -572,10 +572,10 @@ layer {
             self.bn(name)
             self.relu(name)
 
-    def conv_dw_pw(self, name, inp, outp, stride):
+    def conv_dw_pw(self, name, inp, outp, stride, group=None):
         inp = int(inp * self.width_multiplier)
         name1 = name + "/dw"
-        self.conv(name1, inp, 3, stride, inp)
+        self.conv(name1, inp, 3, stride, group or inp)
         self.bn(name1)
         self.relu(name1)
         self.conv_pw(name, outp)
@@ -733,12 +733,17 @@ layer {
             self.data_deploy()
 
         if FLAGS.gray:
-            self.conv_bn_relu_with_factor("conv0", 64, 3, 2)
-            self.conv_pw("conv1", 64)
+            num = 64 * (1 + (self.width_multiplier < 0.1))
+            if int(num * self.width_multiplier) % 3 == 0:
+                self.conv_dw_pw("conv1", num, num, 1, group=3)
+            else:
+                self.conv_bn_relu_with_factor("conv0", num, 3, 2)
+                self.conv_pw("conv1", num)
         else:
+            num = 64
             self.conv_bn_relu_with_factor("conv0", 32, 3, 2)
-            self.conv_dw_pw("conv1", 32, 64, 1)
-        self.conv_dw_pw("conv2", 64, 128, 2)
+            self.conv_dw_pw("conv1", 32, num, 1)
+        self.conv_dw_pw("conv2", num, 128, 2)
         if not FLAGS.shallower:
             self.conv_dw_pw("conv3", 128, 128, 1)
         self.conv_dw_pw("conv4", 128, 256, 2)
