@@ -732,10 +732,11 @@ layer {
         else:
             self.data_deploy()
 
-        self.conv_bn_relu_with_factor("conv0", 32, 3, 2)
         if FLAGS.gray:
+            self.conv_bn_relu_with_factor("conv0", 64, 3, 2)
             self.conv_pw("conv1", 64)
         else:
+            self.conv_bn_relu_with_factor("conv0", 32, 3, 2)
             self.conv_dw_pw("conv1", 32, 64, 1)
         self.conv_dw_pw("conv2", 64, 128, 2)
         if not FLAGS.shallower:
