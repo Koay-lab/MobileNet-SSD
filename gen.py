@@ -838,7 +838,7 @@ if __name__ == '__main__':
         help='Default generate ssd, if this is set, generate classifier prototxt.'
     )
     parser.add_argument(
-        '-w, ''--width_multiplier',
+        '-w', '--width_multiplier',
         type=float,
         default=1.0,
         help='Width multiplier for mobilenet blocks, e.g. 1.0, 0.75, 0.5, 0.25.'
