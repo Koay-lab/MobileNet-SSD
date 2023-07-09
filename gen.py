@@ -738,9 +738,11 @@ layer {
         else:
             self.conv_dw_pw("conv1", 32, 64, 1)
         self.conv_dw_pw("conv2", 64, 128, 2)
-        self.conv_dw_pw("conv3", 128, 128, 1)
+        if not FLAGS.shallower:
+            self.conv_dw_pw("conv3", 128, 128, 1)
         self.conv_dw_pw("conv4", 128, 256, 2)
-        self.conv_dw_pw("conv5", 256, 256, 1)
+        if not FLAGS.shallower:
+            self.conv_dw_pw("conv5", 256, 256, 1)
         self.conv_dw_pw("conv6", 256, 512, 2)
         if not FLAGS.shallow:
             self.conv_dw_pw("conv7", 512, 512, 1)
@@ -851,10 +853,16 @@ if __name__ == '__main__':
         action='store_true',
         help='Omit layers with the coarsest spatial granularities.'
     )
-    parser.add_argument(
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
         '--shallow',
         action='store_true',
         help='Omit 5x repeated MobileNet layers.'
+    )
+    group.add_argument(
+        '--shallower',
+        action='store_true',
+        help='Omit 5x repeated as well as stride 1 MobileNet layers.'
     )
     parser.add_argument(
         '--gray',
@@ -868,5 +876,7 @@ if __name__ == '__main__':
     )
 
     FLAGS, unparsed = parser.parse_known_args()
+    if FLAGS.shallower:
+        FLAGS.shallow = True
     gen = Generator()
     gen.generate(FLAGS.stage, not FLAGS.classifier, FLAGS.width_multiplier, FLAGS.class_num)
