@@ -552,20 +552,20 @@ layer {
         self.last = name
 
     def conv_bn_relu(self, name, num, kernel, stride):
-        if self.depth_multiplier < 0.5:
+        if self.width_multiplier < 0.5:
             num = num // 2
         self.conv(name, num, kernel, stride)
         self.bn(name)
         self.relu(name)
 
     def conv_bn_relu_with_factor(self, name, num, kernel, stride):
-        num = int(num * self.depth_multiplier)
+        num = int(num * self.width_multiplier)
         self.conv(name, num, kernel, stride)
         self.bn(name)
         self.relu(name)
 
     def conv_pw(self, name, outp):
-        outp = int(outp * self.depth_multiplier)
+        outp = int(outp * self.width_multiplier)
         name = name + "/pw"
         self.conv(name, outp, 1)
         if not FLAGS.linear_pw:
@@ -573,7 +573,7 @@ layer {
             self.relu(name)
 
     def conv_dw_pw(self, name, inp, outp, stride):
-        inp = int(inp * self.depth_multiplier)
+        inp = int(inp * self.width_multiplier)
         name1 = name + "/dw"
         self.conv(name1, inp, 3, stride, inp)
         self.bn(name1)
@@ -703,7 +703,7 @@ layer {
 }""" % (name, self.last, name, output))
         self.last = name
 
-    def generate(self, stage, gen_ssd, depth_multiplier, class_num):
+    def generate(self, stage, gen_ssd, width_multiplier, class_num):
         self.class_num = class_num
         self.lmdb = FLAGS.lmdb
         self.label_map = FLAGS.label_map
@@ -712,7 +712,7 @@ layer {
             self.input_size = 320
         else:
             self.input_size = 224
-        self.depth_multiplier = depth_multiplier
+        self.width_multiplier = width_multiplier
         self.class_num = class_num
 
         if gen_ssd:
@@ -751,24 +751,37 @@ layer {
         self.conv_dw_pw("conv12", 512, 1024, 2)
         self.conv_dw_pw("conv13", 1024, 1024, 1)
         if gen_ssd is True:
-            self.conv_bn_relu("conv14_1", 256, 1, 1)
-            self.conv_bn_relu("conv14_2", 512, 3, 2)
-            self.conv_bn_relu("conv15_1", 128, 1, 1)
-            self.conv_bn_relu("conv15_2", 256, 3, 2)
-            if not FLAGS.truncated:
-                self.conv_bn_relu("conv16_1", 128, 1, 1)
-                self.conv_bn_relu("conv16_2", 256, 3, 2)
-                self.conv_bn_relu("conv17_1", 64, 1, 1)
-                self.conv_bn_relu("conv17_2", 128, 3, 2)
+            if FLAGS.ssd_lite:
+                postfix = "/pw"
+                self.conv_dw_pw("conv14", 1024, 512, 2)
+                self.conv_dw_pw("conv15", 512, 256, 2)
+                if not FLAGS.truncated:
+                    self.conv_dw_pw("conv16", 256, 128, 2)
+                    self.conv_dw_pw("conv17", 128, 64, 2)
+            else:
+                postfix = "_2"
+                self.conv_bn_relu("conv14_1", 256, 1, 1)
+                self.conv_bn_relu("conv14_2", 512, 3, 2)
+                self.conv_bn_relu("conv15_1", 128, 1, 1)
+                self.conv_bn_relu("conv15_2", 256, 3, 2)
+                if not FLAGS.truncated:
+                    self.conv_bn_relu("conv16_1", 128, 1, 1)
+                    self.conv_bn_relu("conv16_2", 256, 3, 2)
+                    self.conv_bn_relu("conv17_1", 64, 1, 1)
+                    self.conv_bn_relu("conv17_2", 128, 3, 2)
+
             self.mbox("conv11/pw", 3)
             self.mbox("conv13/pw", 6)
-            self.mbox("conv14_2", 6)
-            self.mbox("conv15_2", 6)
+            self.mbox("conv14" + postfix, 6)
+            self.mbox("conv15" + postfix, 6)
             if not FLAGS.truncated:
-                self.mbox("conv16_2", 6)
-                self.mbox("conv17_2", 6)
-            self.concat_boxes(['conv11', 'conv13', 'conv14_2', 'conv15_2']
-                              + (['conv16_2', 'conv17_2'] if not FLAGS.truncated else []))
+                self.mbox("conv16" + postfix, 6)
+                self.mbox("conv17" + postfix, 6)
+
+            if postfix == "/pw":
+                postfix = ""
+            self.concat_boxes(['conv11', 'conv13', 'conv14' + postfix, 'conv15' + postfix]
+                              + (['conv16' + postfix, 'conv17' + postfix] if not FLAGS.truncated else []))
             if stage == "train":
                 self.ssd_loss()
             elif stage == "deploy":
@@ -794,6 +807,12 @@ def create_ssd_anchors(num_layers=6,
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        '-c', '--class-num',
+        type=int,
+        required=True,
+        help='Output class number, include the \'background\' class. e.g. 21 for voc.'
+    )
+    parser.add_argument(
         '-s', '--stage',
         type=str,
         default='train',
@@ -817,10 +836,10 @@ if __name__ == '__main__':
         help='Default generate ssd, if this is set, generate classifier prototxt.'
     )
     parser.add_argument(
-        '--depth_multiplier',
+        '-w, ''--width_multiplier',
         type=float,
         default=1.0,
-        help='Depth multiplier for mobilenet blocks, support 1.0, 0.75, 0.5, 0.25.'
+        help='Width multiplier for mobilenet blocks, e.g. 1.0, 0.75, 0.5, 0.25.'
     )
     parser.add_argument(
         '--linear_pw',
@@ -843,12 +862,11 @@ if __name__ == '__main__':
         help='Adjust first layers to assume mono-channel input.'
     )
     parser.add_argument(
-        '-c', '--class-num',
-        type=int,
-        required=True,
-        help='Output class number, include the \'background\' class. e.g. 21 for voc.'
+        '--ssd_lite',
+        action='store_true',
+        help='Use separable convolutions for SSD extra feature layers.'
     )
 
     FLAGS, unparsed = parser.parse_known_args()
     gen = Generator()
-    gen.generate(FLAGS.stage, not FLAGS.classifier, FLAGS.depth_multiplier, FLAGS.class_num)
+    gen.generate(FLAGS.stage, not FLAGS.classifier, FLAGS.width_multiplier, FLAGS.class_num)
