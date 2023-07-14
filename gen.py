@@ -735,7 +735,7 @@ layer {
         if FLAGS.gray:
             num = 64 * (1 + (self.width_multiplier < 0.1))
             if int(num * self.width_multiplier) % 3 == 0:
-                self.conv_dw_pw("conv1", num, num, 1, group=3)
+                self.conv_dw_pw("conv1", num, num, 2, group=3)
             else:
                 self.conv_bn_relu_with_factor("conv0", num, 3, 2)
                 self.conv_pw("conv1", num)
@@ -762,10 +762,10 @@ layer {
             if FLAGS.ssd_lite:
                 postfix = "/pw"
                 self.conv_dw_pw("conv14", 1024, 512, 2)
-                self.conv_dw_pw("conv15", 512, 256, 2)
+                self.conv_dw_pw("conv15", 512, 512, 2)
                 if not FLAGS.truncated:
-                    self.conv_dw_pw("conv16", 256, 128, 2)
-                    self.conv_dw_pw("conv17", 128, 64, 2)
+                    self.conv_dw_pw("conv16", 512, 256, 2)
+                    self.conv_dw_pw("conv17", 256, 128, 2)
             else:
                 postfix = "_2"
                 self.conv_bn_relu("conv14_1", 256, 1, 1)
